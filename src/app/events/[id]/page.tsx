@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Calendar, Clock, Users, Video, Copy, Check, Share2, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/utils';
+import { downloadICSFile } from '@/lib/ics';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -100,6 +101,15 @@ export default function EventDetailPage() {
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
                   Share
+                </button>
+
+                <button
+                  onClick={() => downloadICSFile(event)}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-500/20 border border-indigo-500/30 hover:bg-indigo-500/30 text-xs font-semibold text-indigo-300 flex items-center gap-1.5 transition-colors"
+                  title="Export to Calendar (.ics)"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                  + Calendar
                 </button>
               </div>
             </div>

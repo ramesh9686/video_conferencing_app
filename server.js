@@ -15,30 +15,34 @@ app.prepare().then(() => {
   const expressApp = express();
   const server = createServer(expressApp);
 
-  // Initialize Socket.io
   const io = new Server(server, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
-    }
+    cors: { origin: '*', methods: ['GET', 'POST'] }
   });
 
-  // Track room participants state in memory
+  // Memory state stores per room
   const roomParticipants = new Map(); // roomId -> Map(socketId, participantInfo)
+  const roomPolls = new Map();        // roomId -> Array(pollObject)
+  const roomQuestions = new Map();    // roomId -> Array(questionObject)
 
   io.on('connection', (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
 
-    // Join meeting room
-    socket.on('join-room', ({ roomId, userId, name, peerId }) => {
+    socket.on('join-room', ({ roomId, userId, name, peerId, role }) => {
       socket.join(roomId);
       socket.roomId = roomId;
       socket.peerId = peerId;
       socket.userName = name;
       socket.userId = userId;
+      socket.userRole = role || 'ATTENDEE';
 
       if (!roomParticipants.has(roomId)) {
         roomParticipants.set(roomId, new Map());
+      }
+      if (!roomPolls.has(roomId)) {
+        roomPolls.set(roomId, []);
+      }
+      if (!roomQuestions.has(roomId)) {
+        roomQuestions.set(roomId, []);
       }
 
       const room = roomParticipants.get(roomId);
@@ -47,25 +51,25 @@ app.prepare().then(() => {
         peerId,
         userId,
         name,
+        role: socket.userRole,
         isMuted: false,
         isVideoOff: false,
-        isScreenSharing: false,
+        isHandRaised: false,
         joinedAt: new Date().toISOString()
       };
       
       room.set(socket.id, participantInfo);
 
-      // Notify others in the room about new peer
+      // Broadcast to room
       socket.to(roomId).emit('user-joined', participantInfo);
 
-      // Send existing participants list to the newly connected user
-      const activeList = Array.from(room.values());
-      socket.emit('room-participants', activeList);
-
-      console.log(`[Room ${roomId}] User "${name}" joined with peerId: ${peerId}`);
+      // Send current state to newly joined user
+      socket.emit('room-participants', Array.from(room.values()));
+      socket.emit('room-polls', roomPolls.get(roomId));
+      socket.emit('room-questions', roomQuestions.get(roomId));
     });
 
-    // Toggle Mic state
+    // Toggle Audio
     socket.on('toggle-audio', ({ isMuted }) => {
       const roomId = socket.roomId;
       if (!roomId || !roomParticipants.has(roomId)) return;
@@ -76,7 +80,7 @@ app.prepare().then(() => {
       }
     });
 
-    // Toggle Video state
+    // Toggle Video
     socket.on('toggle-video', ({ isVideoOff }) => {
       const roomId = socket.roomId;
       if (!roomId || !roomParticipants.has(roomId)) return;
@@ -87,19 +91,124 @@ app.prepare().then(() => {
       }
     });
 
-    // Screen sharing state
-    socket.on('toggle-screen-share', ({ isScreenSharing }) => {
+    // Toggle Raise Hand
+    socket.on('toggle-hand', ({ isHandRaised }) => {
       const roomId = socket.roomId;
       if (!roomId || !roomParticipants.has(roomId)) return;
       const room = roomParticipants.get(roomId);
       if (room.has(socket.id)) {
-        room.get(socket.id).isScreenSharing = isScreenSharing;
-        io.to(roomId).emit('screen-share-changed', {
-          socketId: socket.id,
-          peerId: socket.peerId,
-          name: socket.userName,
-          isScreenSharing
+        room.get(socket.id).isHandRaised = isHandRaised;
+        io.to(roomId).emit('participant-updated', room.get(socket.id));
+      }
+    });
+
+    // Broadcast Floating Emoji Reaction
+    socket.on('send-reaction', ({ emoji }) => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+      io.to(roomId).emit('new-reaction', {
+        id: 'react-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        emoji,
+        senderName: socket.userName || 'Someone'
+      });
+    });
+
+    // Host Mute All Participants
+    socket.on('host-mute-all', () => {
+      const roomId = socket.roomId;
+      if (!roomId || !roomParticipants.has(roomId)) return;
+      const room = roomParticipants.get(roomId);
+      
+      room.forEach((p) => {
+        if (p.role !== 'HOST') {
+          p.isMuted = true;
+        }
+      });
+      io.to(roomId).emit('room-participants', Array.from(room.values()));
+      socket.to(roomId).emit('force-mute');
+    });
+
+    // Live Polls
+    socket.on('create-poll', ({ question, options }) => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+      const polls = roomPolls.get(roomId) || [];
+      const newPoll = {
+        id: 'poll-' + Date.now(),
+        question,
+        options: options.map((opt, i) => ({ id: i, text: opt, votes: 0, voters: [] })),
+        createdByName: socket.userName || 'Host',
+        createdAt: new Date().toISOString()
+      };
+      polls.unshift(newPoll);
+      roomPolls.set(roomId, polls);
+      io.to(roomId).emit('room-polls', polls);
+    });
+
+    socket.on('vote-poll', ({ pollId, optionId }) => {
+      const roomId = socket.roomId;
+      if (!roomId || !roomPolls.has(roomId)) return;
+      const polls = roomPolls.get(roomId);
+      const poll = polls.find((p) => p.id === pollId);
+      if (poll) {
+        // Remove previous vote if any
+        poll.options.forEach((opt) => {
+          opt.voters = opt.voters.filter((vId) => vId !== socket.id);
+          opt.votes = opt.voters.length;
         });
+        const option = poll.options.find((o) => o.id === optionId);
+        if (option) {
+          option.voters.push(socket.id);
+          option.votes = option.voters.length;
+        }
+        io.to(roomId).emit('room-polls', polls);
+      }
+    });
+
+    // Q&A
+    socket.on('submit-question', ({ text }) => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+      const questions = roomQuestions.get(roomId) || [];
+      const newQ = {
+        id: 'q-' + Date.now(),
+        text,
+        senderName: socket.userName || 'Anonymous',
+        upvotes: 0,
+        upvoters: [],
+        isAnswered: false,
+        createdAt: new Date().toISOString()
+      };
+      questions.unshift(newQ);
+      roomQuestions.set(roomId, questions);
+      io.to(roomId).emit('room-questions', questions);
+    });
+
+    socket.on('upvote-question', ({ questionId }) => {
+      const roomId = socket.roomId;
+      if (!roomId || !roomQuestions.has(roomId)) return;
+      const questions = roomQuestions.get(roomId);
+      const q = questions.find((item) => item.id === questionId);
+      if (q) {
+        const hasVoted = q.upvoters.includes(socket.id);
+        if (hasVoted) {
+          q.upvoters = q.upvoters.filter((id) => id !== socket.id);
+        } else {
+          q.upvoters.push(socket.id);
+        }
+        q.upvotes = q.upvoters.length;
+        io.to(roomId).emit('room-questions', questions);
+      }
+    });
+
+    socket.on('answer-question', ({ questionId }) => {
+      const roomId = socket.roomId;
+      if (!roomId || !roomQuestions.has(roomId)) return;
+      const questions = roomQuestions.get(roomId);
+      const q = questions.find((item) => item.id === questionId);
+      if (q) {
+        q.isAnswered = !q.isAnswered;
+        io.to(roomId).emit('room-questions', questions);
       }
     });
 
@@ -122,6 +231,8 @@ app.prepare().then(() => {
         room.delete(socket.id);
         if (room.size === 0) {
           roomParticipants.delete(roomId);
+          roomPolls.delete(roomId);
+          roomQuestions.delete(roomId);
         } else {
           io.to(roomId).emit('user-left', { socketId: socket.id, peerId: socket.peerId, name: socket.userName });
         }
@@ -130,7 +241,6 @@ app.prepare().then(() => {
     });
   });
 
-  // Next.js page handler
   expressApp.all('*', (req, res) => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
