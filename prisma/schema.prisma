@@ -1,0 +1,99 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events       Event[]       @relation("EventHost")
+  participants Participant[]
+  messages     Message[]
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  hostId      String
+  host        User     @relation("EventHost", fields: [hostId], references: [id], onDelete: Cascade)
+  status      String   @default("UPCOMING") // UPCOMING, LIVE, ENDED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions     Session[]
+  participants Participant[]
+  agendaItems  AgendaItem[]
+  messages     Message[]
+
+  @@index([hostId])
+  @@index([status])
+}
+
+model AgendaItem {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startTime   String
+  duration    String
+  completed   Boolean  @default(false)
+  order       Int      @default(0)
+
+  @@index([eventId])
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  active    Boolean   @default(true)
+
+  @@index([eventId])
+}
+
+model Participant {
+  id         String    @id @default(uuid())
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  role       String    @default("ATTENDEE") // HOST, SPEAKER, ATTENDEE
+  joinedAt   DateTime  @default(now())
+  leftAt     DateTime?
+  isMuted    Boolean   @default(false)
+  isVideoOff Boolean   @default(false)
+
+  @@index([eventId])
+  @@index([userId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  senderName String
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([eventId])
+}
