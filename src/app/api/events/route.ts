@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { generateEventCode } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const authUser = await getAuthUser();
