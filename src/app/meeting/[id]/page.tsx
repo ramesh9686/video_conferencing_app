@@ -385,8 +385,13 @@ export default function MeetingRoomPage() {
             <VideoIcon className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white font-heading">{event?.title || 'EventConnect Meeting'}</h2>
-            <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <h2 className="text-sm font-bold text-white font-heading flex items-center gap-2">
+              {event?.title || 'EventConnect Meeting'}
+              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                🔒 E2EE Encrypted
+              </span>
+            </h2>
+            <span className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live Session
             </span>
           </div>
@@ -855,7 +860,22 @@ export default function MeetingRoomPage() {
           </button>
 
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => {
+              if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach((track) => {
+                  track.stop();
+                  console.log(`[Privacy Protection] Media track stopped: ${track.kind}`);
+                });
+                localStreamRef.current = null;
+              }
+              if (socketRef.current) {
+                socketRef.current.disconnect();
+              }
+              if (peerInstanceRef.current) {
+                peerInstanceRef.current.destroy();
+              }
+              router.push('/dashboard');
+            }}
             className="w-12 h-11 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 ml-2"
             title="Leave Meeting"
           >

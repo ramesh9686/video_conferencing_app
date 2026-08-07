@@ -58,6 +58,24 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* Demo Credentials Hint */}
+        <div className="mb-6 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-slate-300 flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-indigo-400 mb-0.5">Demo Account</p>
+            <p className="text-slate-400">admin@example.com / password123</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@example.com');
+              setPassword('password123');
+            }}
+            className="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 font-medium text-xs transition-colors"
+          >
+            Auto Fill
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
