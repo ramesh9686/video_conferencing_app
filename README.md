@@ -1,10 +1,5 @@
 # EventConnect 🎥 Virtual Event & Video Conferencing Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.10-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
-[![WebRTC](https://img.shields.io/badge/WebRTC-Real--time-333333?style=for-the-badge&logo=webrtc)](https://webrtc.org/)
 
 **EventConnect** is a modern, high-aesthetic web application designed for seamless event management and multi-party video conferencing. Host events, build interactive schedules, stream HD video grid calls, share screens, and chat in real-time.
 
