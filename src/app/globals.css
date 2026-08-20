@@ -11,7 +11,7 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #080c14;
+  background-color: #0d1422ff;
   color: #f3f4f6;
   overflow-x: hidden;
 }
@@ -21,7 +21,7 @@ body {
   background: rgba(18, 24, 38, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(165, 35, 35, 0.08);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
