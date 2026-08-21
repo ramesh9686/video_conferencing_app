@@ -26,7 +26,7 @@
 - **Database & ORM**: Prisma ORM, SQLite (local development default) / PostgreSQL ready
 - **Real-Time & Video**: Socket.io signaling server, PeerJS (WebRTC)
 - **Authentication**: Custom JWT in HTTP-only cookies, bcryptjs
-
+There is no licene for this 
 ---
 
 ## 🚀 Quick Start & Installation
