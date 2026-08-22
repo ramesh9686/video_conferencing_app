@@ -2,7 +2,7 @@
 
 
 **EventConnect** is a modern, high-aesthetic web application designed for seamless event management and multi-party video conferencing. Host events, build interactive schedules, stream HD video grid calls, share screens, and chat in real-time.
-
+This is a sample platform
 ---
 
 ## ✨ Features
